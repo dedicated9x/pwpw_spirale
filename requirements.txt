@@ -1,0 +1,4 @@
+numpy
+opencv-python
+tqdm
+ultralytics>=8.2.0
