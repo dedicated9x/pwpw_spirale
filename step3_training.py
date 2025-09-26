@@ -9,10 +9,10 @@ import os
 # ===================== CONFIG =====================
 CFG = {
     # --- ścieżki ---
-    "root_data": "/home/admin2/Documents/repos/cct/pwpw/inputs",  # gdzie generator zrobił dataset/
-    "run_root":  "/home/admin2/Documents/repos/cct/pwpw/outputs", # tu zapisze modele/metryki
+    "root_data": "/home/admin2/Documents/repos/pwpw/inputs",  # gdzie generator zrobił dataset/
+    "run_root":  "/home/admin2/Documents/repos/pwpw/outputs", # tu zapisze modele/metryki
     "test_img":  "/home/admin2/Downloads/Shape detection/ShapeDetector raw/PXL_20250925_050227404.jpg",
-    "test_out":  "/home/admin2/Documents/repos/cct/pwpw/outputs/test",
+    "test_out":  "/home/admin2/Documents/repos/pwpw/outputs/test",
 
     # --- model ---
     # podmień na 'yolov11n.pt' jeżeli wolisz najnowszy – API to samo

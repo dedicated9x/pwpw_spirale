@@ -20,7 +20,8 @@ CFG = {
     "class_probs": [1/3, 1/3, 1/3],
 
     # --- rozmiary figur (w pikselach) ---
-    "min_size": 36,                  # ~średnica koła / bok kwadratu / najdłuższy bok trójkąta
+    # "min_size": 36,                  # ~średnica koła / bok kwadratu / najdłuższy bok trójkąta
+    "min_size": 27,
     "max_size": 120,
 
     # --- styl rysunku ---
@@ -44,7 +45,7 @@ CFG = {
     "vignette_strength": [0.0, 0.25],         # 0..1
 
     # --- I/O ---
-    "out_root": "/home/admin2/Documents/repos/cct/pwpw/inputs",
+    "out_root": "/home/admin2/Documents/repos/pwpw/inputs",
     "img_format": "jpg",
     "jpg_quality": 92,
 

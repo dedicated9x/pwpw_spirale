@@ -1,4 +1,4 @@
-numpy
 opencv-python
 tqdm
+numpy==1.26.4
 ultralytics>=8.2.0
