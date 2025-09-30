@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from _spirale_src.step1_rs.random_search_sacks_points_v2 import detect_points
+from _spirale_src.step1_rs.random_search_sacks_points_v3 import detect_points
 from _spirale_src.step2_testds.list_params import PARAMS
 
 import os
@@ -9,8 +9,8 @@ from pathlib import Path
 from tqdm import tqdm
 
 # Wejście/wyjście
-INPUT_DIR = Path("/_spirale/inputs/reprezentanci")
-OUT_BASE  = Path("/_spirale/outputs/po_reprezentantach_v3")
+INPUT_DIR = Path("/home/admin2/Documents/repos/pwpw/_spirale/inputs/reprezentanci")
+OUT_BASE  = Path("/home/admin2/Documents/repos/pwpw/_spirale/outputs/po_reprezentantach_v3_v2")
 
 # Dozwolone rozszerzenia obrazów
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
