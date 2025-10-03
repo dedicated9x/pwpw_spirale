@@ -111,19 +111,30 @@ def detect_points(input_img: str, output_img: str, params_dict: dict):
     cv2.imwrite(output_img, vis)
     return {"count": len(pts), "points": pts}
 
-def get_points(img_path: str, params_dict: dict) -> List[Tuple[int, int]]:
+# def get_points(img_path: str, params_dict: dict) -> List[Tuple[int, int]]:
+#     """
+#     Zwraca listę centroidów jako inty (x, y), zaokrąglając subpikselowe wyniki.
+#     Nie zapisuje żadnego obrazu. Używaj w ETAPIE 2 (dopasowanie do wzorca).
+#     """
+#     bgr = cv2.imread(img_path, cv2.IMREAD_COLOR)
+#     if bgr is None:
+#         raise FileNotFoundError(f"Nie mogę wczytać: {img_path}")
+#
+#     pts_float = _detect_points_from_bgr(bgr, params_dict)
+#     # Zaokrąglij do intów (zgodnie z wymaganym typem List[Tuple[int,int]])
+#     pts_int: List[Tuple[int, int]] = [(int(round(x)), int(round(y))) for (x, y) in pts_float]
+#     return pts_int
+
+def get_points(img_path: str, params_dict: dict) -> List[Tuple[float, float]]:
     """
-    Zwraca listę centroidów jako inty (x, y), zaokrąglając subpikselowe wyniki.
+    Zwraca listę subpikselowych centroidów jako floaty (x, y).
     Nie zapisuje żadnego obrazu. Używaj w ETAPIE 2 (dopasowanie do wzorca).
     """
     bgr = cv2.imread(img_path, cv2.IMREAD_COLOR)
     if bgr is None:
         raise FileNotFoundError(f"Nie mogę wczytać: {img_path}")
-
-    pts_float = _detect_points_from_bgr(bgr, params_dict)
-    # Zaokrąglij do intów (zgodnie z wymaganym typem List[Tuple[int,int]])
-    pts_int: List[Tuple[int, int]] = [(int(round(x)), int(round(y))) for (x, y) in pts_float]
-    return pts_int
+    pts_float = _detect_points_from_bgr(bgr, params_dict)  # [(cx, cy) jako float]
+    return [(float(x), float(y)) for (x, y) in pts_float]
 
 # ---------------------- RANDOM SEARCH ----------------------
 
