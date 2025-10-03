@@ -20,7 +20,7 @@ from typing import Tuple, Dict, Any
 import numpy as np
 import cv2
 
-from _spirale_src.step1_rs.random_search_sacks_points_v3 import get_points
+from _spirale_src._library.random_search_sacks_points_v3 import get_points
 
 # --- hardcoded params (Twoje) ---
 HARD_PARAMS = {
@@ -40,10 +40,7 @@ HARD_PARAMS = {
     'dot_radius': 6,
 }
 
-# --- domyślne ścieżki ---
-DEFAULT_IMG = "/home/admin2/Documents/repos/pwpw/_spirale/inputs/PXL_20250925_061456317_cut_shifted.jpg"
-DEFAULT_CAN = "/home/admin2/Documents/repos/pwpw/_spirale/outputs/canonical/canonical_sacks_N10000.npz"
-OUT_BASE    = Path("/home/admin2/Documents/repos/pwpw/_spirale/outputs/fit")
+
 
 # ----------------------------- utils -----------------------------
 
@@ -226,12 +223,21 @@ def draw_overlay_fit(img_path: str, P: np.ndarray, S: np.ndarray, trans: Dict[st
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out_path), vis)
 
+
+# --- domyślne ścieżki ---
+DEFAULT_IMG = Path(__file__).parents[1] / "_inputs/PXL_20250925_061456317_cut_shifted.jpg"
+DEFAULT_CAN = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+OUT_DIR = Path(__file__).parents[1] / "_outputs/_spirale/step2b_fit_transform"
+
+
+
 # ----------------------------- CLI -----------------------------
 
 def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--img", type=str, default=DEFAULT_IMG)
     ap.add_argument("--canonical", type=str, default=DEFAULT_CAN)
+    ap.add_argument("--out_dir", type=str, default=OUT_DIR)
     ap.add_argument("--flip_canonical_y", type=str, default="true", choices=["true","false"],
                     help="Jeśli true (domyślnie), zamienia y->-y w kanonie, by dopasować układ obrazu (y w dół).")
     ap.add_argument("--keep_ratio", type=float, default=0.85)
@@ -261,7 +267,7 @@ def main():
     P = np.array(pts, dtype=np.float64)
     print(f"[fit] Detekcje (heura): {len(P)}")
 
-    out_dir = OUT_BASE / img_path.stem
+    out_dir = OUT_DIR / img_path.stem
     out_dir.mkdir(parents=True, exist_ok=True)
     det_csv = out_dir / "detections.csv"
     save_detections_csv(det_csv, P)
@@ -310,3 +316,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+.../pwpw$ python -m _spirale_src.step2b_fit_transform
+"""

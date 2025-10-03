@@ -91,12 +91,14 @@ def save_preview_png(out_png: Path, N: int, x: np.ndarray, y: np.ndarray, prime_
 # ---------- CLI ----------
 
 def main():
+    DEFAULT_OUT_DIR = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical"
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--N", type=int, default=10_000, help="Zakres liczb 1..N")
     ap.add_argument("--theta", type=str, default="theta=n",
                     choices=["theta=n", "theta=golden*n"], help="Model kąta (domyślnie klasyczny)")
     ap.add_argument("--outdir", type=str,
-                    default="/home/admin2/Documents/repos/pwpw/_spirale/outputs/canonical",
+                    default=DEFAULT_OUT_DIR,
                     help="Folder wyjściowy")
     args = ap.parse_args()
 
@@ -152,3 +154,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+.../pwpw$ python -m _spirale_src.step2a_create_canonical
+"""

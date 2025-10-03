@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 step2b_ml_train.py
-Trenuje PointNet-regresor homografii H (3x3, h33=1) na datasetcie z step2b_ml_make_dataset.py.
+Trenuje PointNet-regresor homografii H (3x3, h33=1) na datasetcie z step2a_ml_make_dataset.py.
 
 Wejście:  .npz z polami: points [K,2], H [3,3], image_size [W,H], model, ...
 Kanon:    wczytywany z canonical_sacks_N10000.npz (flip_y=True) – jak w generatorze.

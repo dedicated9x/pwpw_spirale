@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-step2b_ml_make_dataset.py
+step2a_ml_make_dataset.py
 Syntetyczny dataset dla ETAPU 2 (ML regressja transformacji).
 Tworzy chmury punktów w pikselach z losową geometrią, brakami, fałszywkami i jitterem.
 
