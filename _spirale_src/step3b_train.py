@@ -278,19 +278,22 @@ def train_loop(args):
 
     print(f"[DONE] modelem zapisane do: {outdir}/best.pt i last.pt")
 
+PATH_DATASET = Path(__file__).parents[1] / "_outputs/_spirale/step3a_make_dataset"
+PATH_CANON = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+PATH_OUTPUT_MODEL = Path(__file__).parents[1] / "_outputs/_spirale/step3b_train"
 
 # --------------------------- CLI ---------------------------
 
 def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", type=str,
-                    default="/home/admin2/Documents/repos/pwpw/_spirale/outputs/ml_dataset",
+                    default=str(PATH_DATASET),
                     help="Folder bazowy datasetu (z podfolderami ds/train, ds/val, ...)")
     ap.add_argument("--canonical", type=str,
-                    default="/home/admin2/Documents/repos/pwpw/_spirale/outputs/canonical/canonical_sacks_N10000.npz",
+                    default=str(PATH_CANON),
                     help="Kanon z step2a (używamy do S)")
     ap.add_argument("--outdir", type=str,
-                    default="/home/admin2/Documents/repos/pwpw/_spirale/outputs/ml_models/pointnet_homography",
+                    default=str(PATH_OUTPUT_MODEL),
                     help="Gdzie zapisać model i config")
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--batch_size", type=int, default=8)

@@ -24,9 +24,7 @@ import cv2
 from tqdm import tqdm
 
 
-# ---------- domyślne ścieżki ----------
-DEFAULT_CANON = "/home/admin2/Documents/repos/pwpw/_spirale/outputs/canonical/canonical_sacks_N10000.npz"
-DEFAULT_OUT   = "/home/admin2/Documents/repos/pwpw/_spirale/outputs/ml_dataset"
+
 
 
 # ---------- narzędzia bazowe ----------
@@ -343,9 +341,12 @@ def draw_points(W: int, H: int, true_pts: np.ndarray, false_pts: np.ndarray) -> 
         cv2.circle(img, (int(round(x)), int(round(y))), 2, (0, 215, 255), -1, lineType=cv2.LINE_AA)
     return img
 
+# ---------- domyślne ścieżki ----------
+DEFAULT_CANON = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+DEFAULT_OUT   = Path(__file__).parents[1] / "_outputs/_spirale/step3a_make_dataset"
+
 
 # ---------- CLI ----------
-
 def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--canonical", type=str, default=DEFAULT_CANON,

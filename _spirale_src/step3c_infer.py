@@ -27,14 +27,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # --- heurystyczna detekcja punktów ---
-from _spirale_src.step1_rs.random_search_sacks_points_v3 import get_points  # zwraca floaty
+from _spirale_src._library.random_search_sacks_points_v3 import get_points  # zwraca floaty
 
 # --- domyślne ścieżki ---
-DEFAULT_IMG      = "/home/admin2/Documents/repos/pwpw/_spirale/inputs/PXL_20250925_061456317_cut_shifted.jpg"
+DEFAULT_IMG      = str(Path(__file__).parents[1] / "_inputs/PXL_20250925_061456317_cut_shifted.jpg")
 DEFAULT_IMG_DIR  = None
-DEFAULT_CANON    = "/home/admin2/Documents/repos/pwpw/_spirale/outputs/canonical/canonical_sacks_N10000.npz"
-DEFAULT_MODEL    = "/home/admin2/Documents/repos/pwpw/_spirale/outputs/ml_models/pointnet_homography/last.pt"
-DEFAULT_OUTDIR   = "/home/admin2/Documents/repos/pwpw/_spirale/outputs/ml_infer"
+DEFAULT_CANON    = str(Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz")
+DEFAULT_MODEL    = str(Path(__file__).parents[1] / "_outputs/_spirale/step3b_train/last.pt")
+DEFAULT_OUTDIR   = str(Path(__file__).parents[1] / "_outputs/_spirale/step3c_infer")
+
 
 # --- heura (domyślne parametry) ---
 HEUR_PARAMS = {
