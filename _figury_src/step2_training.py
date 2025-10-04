@@ -1,38 +1,36 @@
 from pathlib import Path
 import random
+import argparse
 from ultralytics import YOLO
 
 # ===================== CONFIG =====================
 CFG = {
-    # --- ścieżki ---
-    "root_data": str(Path(__file__).parents[1] / "_outputs/_figury/step1_generate_data"),  # gdzie generator zrobił dataset/
-    "run_root":  str(Path(__file__).parents[1] / "_outputs/_figury/step2_training"), # tu zapisze modele/metryki
+    # --- ścieżki (domyślne) ---
+    "root_data": str(Path(__file__).parents[1] / "_outputs/_figury/step1_generate_data"),
+    "run_root":  str(Path(__file__).parents[1] / "_outputs/_figury/step2_training"),
 
     # --- model ---
-    # podmień na 'yolov11n.pt' jeżeli wolisz najnowszy – API to samo
     "model_name": "yolov8n.pt",
 
     # --- dane / split ---
-    "classes": ["square", "circle", "triangle"],  # 0/1/2 – zgodnie z generatorem
-    "val_frac": 0.12,         # część walidacyjna
+    "classes": ["square", "circle", "triangle"],
+    "val_frac": 0.12,
     "seed": 1337,
 
     # --- trening ---
     "epochs": 25,
     "batch": 16,
-    "imgsz": 1024,            # YOLO robi letterbox; nie musi być 3072x4080
+    "imgsz": 1024,
     "lr0": 0.01,
-    "device": 0,              # -1 = CPU, 0 = pierwsze GPU
+    "device": 0,     # -1 = CPU, 0 = pierwsze GPU
     "workers": 4,
-    "patience": 50,           # early stop (duże żeby nie przerywać)
-    "conf_pred": 0.25,        # próg do predykcji na test_img
+    "patience": 50,
+    "conf_pred": 0.25,  # (niewykorzystywane, ale zostawiam jeśli zechcesz dodać predykcje)
 }
 # ==================================================
 
 def make_split_txts(root_data: Path, val_frac: float, seed: int):
-    """
-    Tworzy listy train.txt/val.txt wskazujące obrazy. Labels YOLO muszą leżeć obok w dataset/labels.
-    """
+    """Tworzy listy train.txt/val.txt wskazujące obrazy. Labels YOLO muszą leżeć obok w dataset/labels."""
     img_dir = root_data / "dataset" / "images"
     lbl_dir = root_data / "dataset" / "labels"
     assert img_dir.is_dir() and lbl_dir.is_dir(), f"Brak {img_dir} lub {lbl_dir}"
@@ -64,7 +62,6 @@ def make_split_txts(root_data: Path, val_frac: float, seed: int):
 def write_data_yaml(run_root: Path, train_txt: Path, val_txt: Path, classes):
     data_yaml = run_root / "shapes_data.yaml"
     data_yaml.parent.mkdir(parents=True, exist_ok=True)
-    # YOLOv8 akceptuje ścieżki do .txt z listą obrazów
     content = (
         f"train: {train_txt}\n"
         f"val: {val_txt}\n"
@@ -73,9 +70,15 @@ def write_data_yaml(run_root: Path, train_txt: Path, val_txt: Path, classes):
     data_yaml.write_text(content)
     return data_yaml
 
-def main():
-    root_data = Path(CFG["root_data"])
-    run_root  = Path(CFG["run_root"])
+def parse_args():
+    p = argparse.ArgumentParser(description="Train YOLO on generated shapes dataset.")
+    p.add_argument("--root-data", type=Path, default=Path(CFG["root_data"]),
+                   help="Katalog z datasetem: oczekuje dataset/{images,labels}. Domyślnie z CFG.")
+    p.add_argument("--run-root", type=Path, default=Path(CFG["run_root"]),
+                   help="Katalog wyjściowy na runs/ i shapes_data.yaml. Domyślnie z CFG.")
+    return p.parse_args()
+
+def main(root_data: Path, run_root: Path):
     run_root.mkdir(parents=True, exist_ok=True)
 
     # 1) split + yaml
@@ -85,9 +88,9 @@ def main():
     # 2) model
     model = YOLO(CFG["model_name"])
 
-    # 3) trenowanie W JEDNYM WYWOŁANIU i zapis checkpointów co epokę
+    # 3) trening
     run_dir = run_root / "runs"
-    run_name = "shapes_yolo_n"  # albo zrób z nazwy modelu
+    run_name = "shapes_yolo_n"
 
     model.train(
         data=str(data_yaml),
@@ -105,4 +108,5 @@ def main():
     )
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(root_data=args.root_data, run_root=args.run_root)
