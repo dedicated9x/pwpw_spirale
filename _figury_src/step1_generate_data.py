@@ -47,7 +47,7 @@ CFG = {
 
 
     # --- I/O ---
-    "out_root": Path(__file__).parents[1] / "_outputs/_figury/step1_generate_data",
+    "out_root": str(Path(__file__).parents[1] / "_outputs/_figury/step1_generate_data"),
     "img_format": "jpg",
     "jpg_quality": 92,
 

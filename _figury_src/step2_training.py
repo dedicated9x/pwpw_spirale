@@ -1,18 +1,12 @@
-# path_img = "/home/admin2/Downloads/Shape detection/ShapeDetector raw/PXL_20250925_050227404.jpg"
-
-# train_shapes_yolo.py
 from pathlib import Path
 import random
 from ultralytics import YOLO
-import os
 
 # ===================== CONFIG =====================
 CFG = {
     # --- ścieżki ---
-    "root_data": "/home/admin2/Documents/repos/pwpw/inputs",  # gdzie generator zrobił dataset/
-    "run_root":  "/home/admin2/Documents/repos/pwpw/outputs", # tu zapisze modele/metryki
-    "test_img":  "/home/admin2/Downloads/Shape detection/ShapeDetector raw/PXL_20250925_050227404.jpg",
-    "test_out":  "/home/admin2/Documents/repos/pwpw/outputs/test",
+    "root_data": str(Path(__file__).parents[1] / "_outputs/_figury/step1_generate_data"),  # gdzie generator zrobił dataset/
+    "run_root":  str(Path(__file__).parents[1] / "_outputs/_figury/step2_training"), # tu zapisze modele/metryki
 
     # --- model ---
     # podmień na 'yolov11n.pt' jeżeli wolisz najnowszy – API to samo
@@ -79,15 +73,10 @@ def write_data_yaml(run_root: Path, train_txt: Path, val_txt: Path, classes):
     data_yaml.write_text(content)
     return data_yaml
 
-# w CFG dodaj:
-# "save_period": 1,
-
 def main():
     root_data = Path(CFG["root_data"])
     run_root  = Path(CFG["run_root"])
     run_root.mkdir(parents=True, exist_ok=True)
-    test_out = Path(CFG["test_out"])
-    test_out.mkdir(parents=True, exist_ok=True)
 
     # 1) split + yaml
     train_txt, val_txt = make_split_txts(root_data, CFG["val_frac"], CFG["seed"])
@@ -113,45 +102,7 @@ def main():
         exist_ok=True,
         patience=CFG["patience"],
         verbose=True,
-        save_period=CFG.get("save_period", 1)  # <<--- kluczowe
     )
-
-    # 4) po treningu: znajdź katalog runu i przejdź po wagach epoch*.pt
-    #    (w tej wersji API trener zostaje podpięty do obiektu model)
-    save_dir = Path(getattr(getattr(model, "trainer", None), "save_dir", run_dir / run_name))
-    weights_dir = save_dir / "weights"
-    assert weights_dir.exists(), f"Nie znaleziono katalogu wag: {weights_dir}"
-
-    # zbierz checkpointy per epoka
-    def epoch_num(p):
-        stem = p.stem  # 'epoch001'
-        return int(''.join(ch for ch in stem if ch.isdigit()) or -1)
-
-    ckpts = sorted(weights_dir.glob("epoch*.pt"), key=epoch_num)
-    if not ckpts:
-        # fallback: jeśli ktoś wyłączył save_period – przynajmniej zrób na last/best
-        ckpts = [p for p in [weights_dir / "last.pt", weights_dir / "best.pt"] if p.exists()]
-
-    # 5) predykcje na stałym obrazie dla KAŻDEGO checkpointu
-    for ck in ckpts:
-        ep = epoch_num(ck)
-        out_name = f"epoch_{ep:03d}" if ep >= 0 else ck.stem
-        m = YOLO(str(ck))
-        m.predict(
-            source=CFG["test_img"],
-            conf=CFG["conf_pred"],
-            imgsz=CFG["imgsz"],
-            save=True,
-            project=str(test_out),
-            name=out_name,
-            exist_ok=True,
-            device=CFG["device"],
-            verbose=False
-        )
-
-    print(f"OK. Run: {save_dir}")
-    print(f"Checkpointy: {len(ckpts)}  |  Overlays: {CFG['test_out']}/*")
-
 
 if __name__ == "__main__":
     main()
