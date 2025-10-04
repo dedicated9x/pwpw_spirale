@@ -1,4 +1,5 @@
 import os
+import argparse
 from pathlib import Path
 import math
 import random
@@ -44,8 +45,9 @@ CFG = {
     "paper_gradient_strength": [0.0, 35.0],   # maks. różnica jasności tła
     "vignette_strength": [0.0, 0.25],         # 0..1
 
+
     # --- I/O ---
-    "out_root": "/home/admin2/Documents/repos/pwpw/inputs",
+    "out_root": Path(__file__).parents[1] / "_outputs/_figury/step1_generate_data",
     "img_format": "jpg",
     "jpg_quality": 92,
 
@@ -337,16 +339,19 @@ def main():
 
     print("Done. Images:", CFG["n_images"])
 
+def parse_args():
+    p = argparse.ArgumentParser(description="Generator syntetycznych figur z etykietami YOLO.")
+    p.add_argument(
+        "-o", "--out-root", "--out_root",
+        dest="out_root",
+        default=CFG["out_root"],
+        help="Katalog wyjściowy (domyślnie: %(default)s)",
+    )
+    return p.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_args()
+    CFG["out_root"] = args.out_root
     main()
 
-
-"""
-Uwagi
-Klasy w YOLO: 0=square, 1=circle, 2=triangle. Zmienisz kolejność w CFG["shape_classes"].
-Perspektywę zastąpiłem affine (rot+shear+translate) – prostsze do poprawnego przeliczenia bboxów. Jeśli koniecznie chcesz pełny perspective warp, trzeba przenieść wielokąty przez macierz 3×3 i potem liczyć AABB; mechanika podobna.
-Gdy chcesz brak nakładania, ustaw allow_overlap=False i (opcjonalnie) min_iou_between_shapes np. 0.05.
-Podkręć gęstość figur min/max_shapes_per_img, rozmiary min/max_size, grubość linii itp.
-Zwiększ realizm: podbij paper_gradient_strength, vignette_strength, blur_sigma, noise_std.
-To jest solidna baza do szybkiego trenowania YOLO (wystarczy wskazać dataset/images i dataset/labels). Previews w inputs/previews pozwolą Ci „na oko” ocenić dystrybucję i jakość bboxów.
-"""
