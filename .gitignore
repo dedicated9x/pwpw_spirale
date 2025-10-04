@@ -1,4 +1,5 @@
 yolo11n.pt
 yolov8n.pt
 .idea/
-_outputs/
+_outputs/*
+!_outputs/**/
