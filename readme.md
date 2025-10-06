@@ -5,7 +5,9 @@ Dla przypomnienia, zadanie ma teoretycznie 3 etapy:
 2) użycie modelu ML, aby znaleźć transformację. Jak już mamy transformację, to możemy wtedy zmatchować dwie spirale uzyskując m.in. miejsca, gdzie kropki powinny być, a ich nie ma. Kropki może nie być na swoim miejscu z dwóch powodów. Albo heurystyka z pkt 1 jej nie wykryła albo w ogóle nie było tam kropki.
 3) ustalenie, co znajduje się w “miejscach na brakujące kropki”
 
-**Ważne:** wszystkie skrypty, jakie są używane w tym zadaniu mają swoje parametry domyślne, 
+**Ważne 1):** Kod działa dobrze z pythonem 3.9
+
+**Ważne 2):** wszystkie skrypty, jakie są używane w tym zadaniu mają swoje parametry domyślne, 
 a ich outputy znajdują się w folderach o nazwach zgodnych ze wzorem _outputs/_spirale/<nazwa_skryptu>.
 
 ### Heurystyka do wykrywania kropek
