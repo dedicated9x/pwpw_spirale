@@ -59,4 +59,7 @@ Domyślnie jako obraz wejściowy brany jest obrazek _inputs/PXL_20250925_0614563
 ostateczna wizualizacja zapisywana jest w _outputs/_spirale/step2b_fit_transform. 
 Można to zmienić bawiąc się parametrami skryptu. 
 
+Co do samej wizualizacji, to zielona spirala to spirala wejściowa, natomiast niebieska
+spirala powstała z oszacowania parametrów transformacji przez heurystykę.
+
 **Ważne:** skrypt step2b_fit_transform.py potrzebuje do swojego działania outputu skryptu step2a_create_canonical.py 
