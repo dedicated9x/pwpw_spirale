@@ -1,3 +1,5 @@
+# Zadanie "Spirale"
+
 Dla przypomnienia, zadanie ma teoretycznie 3 etapy:
 1) użycie heurystyki (lub teoretycznie modelu ML), aby wykryć jak najwięcej kropek,
 2) użycie modelu ML, aby znaleźć transformację. Jak już mamy transformację, to możemy wtedy zmatchować dwie spirale uzyskując m.in. miejsca, gdzie kropki powinny być, a ich nie ma. Kropki może nie być na swoim miejscu z dwóch powodów. Albo heurystyka z pkt 1 jej nie wykryła albo w ogóle nie było tam kropki.
