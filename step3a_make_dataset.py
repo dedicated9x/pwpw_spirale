@@ -342,8 +342,8 @@ def draw_points(W: int, H: int, true_pts: np.ndarray, false_pts: np.ndarray) -> 
     return img
 
 # ---------- domyślne ścieżki ----------
-DEFAULT_CANON = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
-DEFAULT_OUT   = Path(__file__).parents[1] / "_outputs/_spirale/step3a_make_dataset"
+DEFAULT_CANON = Path(__file__).parents[0] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+DEFAULT_OUT   = Path(__file__).parents[0] / "_outputs/_spirale/step3a_make_dataset"
 
 
 # ---------- CLI ----------

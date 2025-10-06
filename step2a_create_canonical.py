@@ -91,7 +91,7 @@ def save_preview_png(out_png: Path, N: int, x: np.ndarray, y: np.ndarray, prime_
 # ---------- CLI ----------
 
 def main():
-    DEFAULT_OUT_DIR = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical"
+    DEFAULT_OUT_DIR = Path(__file__).parents[0] / "_outputs/_spirale/step2a_create_canonical"
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--N", type=int, default=10_000, help="Zakres liczb 1..N")

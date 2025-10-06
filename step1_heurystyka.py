@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from _spirale_src._library.random_search_sacks_points_v3 import detect_points
+from _library.random_search_sacks_points_v3 import detect_points
 from pathlib import Path
 import argparse
 
 # Domyślne ścieżki (używane jako default w argparse)
-DEFAULT_INPUT_IMG = Path(__file__).parents[1] / "_inputs/PXL_20250925_061456317.jpg"
-DEFAULT_OUTPUT_IMG = Path(__file__).parents[1] / "_outputs/_spirale/step1_heurystyka/PXL_20250925_061456317.jpg"
+DEFAULT_INPUT_IMG = Path(__file__).parents[0] / "_inputs/PXL_20250925_061456317.jpg"
+DEFAULT_OUTPUT_IMG = Path(__file__).parents[0] / "_outputs/_spirale/step1_heurystyka/PXL_20250925_061456317.jpg"
 
 params = {
     'clahe_clip': 3.71,

@@ -20,7 +20,7 @@ from typing import Tuple, Dict, Any
 import numpy as np
 import cv2
 
-from _spirale_src._library.random_search_sacks_points_v3 import get_points
+from _library.random_search_sacks_points_v3 import get_points
 
 # --- hardcoded params (Twoje) ---
 HARD_PARAMS = {
@@ -225,9 +225,9 @@ def draw_overlay_fit(img_path: str, P: np.ndarray, S: np.ndarray, trans: Dict[st
 
 
 # --- domyślne ścieżki ---
-DEFAULT_IMG = Path(__file__).parents[1] / "_inputs/PXL_20250925_061456317_cut_shifted.jpg"
-DEFAULT_CAN = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
-OUT_DIR = Path(__file__).parents[1] / "_outputs/_spirale/step2b_fit_transform"
+DEFAULT_IMG = Path(__file__).parents[0] / "_inputs/PXL_20250925_061456317_cut_shifted.jpg"
+DEFAULT_CAN = Path(__file__).parents[0] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+OUT_DIR = Path(__file__).parents[0] / "_outputs/_spirale/step2b_fit_transform"
 
 
 

@@ -278,9 +278,9 @@ def train_loop(args):
 
     print(f"[DONE] modelem zapisane do: {outdir}/best.pt i last.pt")
 
-PATH_DATASET = Path(__file__).parents[1] / "_outputs/_spirale/step3a_make_dataset"
-PATH_CANON = Path(__file__).parents[1] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
-PATH_OUTPUT_MODEL = Path(__file__).parents[1] / "_outputs/_spirale/step3b_train"
+PATH_DATASET = Path(__file__).parents[0] / "_outputs/_spirale/step3a_make_dataset"
+PATH_CANON = Path(__file__).parents[0] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+PATH_OUTPUT_MODEL = Path(__file__).parents[0] / "_outputs/_spirale/step3b_train"
 
 # --------------------------- CLI ---------------------------
 
