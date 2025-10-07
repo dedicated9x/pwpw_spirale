@@ -1,22 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-step2b_ml_infer.py
-Inferencja PointNet-regresora homografii na realnym obrazie(y):
-- Heura -> chmura punktów (get_points)
-- Normalizacja -> predykcja H_norm
-- Konwersja do H_px
-- Overlay + metryki dopasowania (RMS/p95/inliers) przez mutual-NN z bramkowaniem.
-
+step2b_ml_infer_batch.py
+Batch inferencja PointNet-regresora homografii dla WSZYSTKICH plików bezpośrednio w _inputs (bez rekurencji).
 Wizka: zielone = detekcje z heury, pomarańczowe = kanon po transformacji ML.
 """
 
-import os
 import json
-import glob
 import math
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 import numpy as np
 import cv2
@@ -30,12 +23,11 @@ import torch.nn.functional as F
 from _library.random_search_sacks_points_v3 import get_points  # zwraca floaty
 
 # --- domyślne ścieżki ---
-DEFAULT_IMG      = str(Path(__file__).parents[0] / "_inputs/PXL_20250925_061456317_cut_shifted.jpg")
-DEFAULT_IMG_DIR  = None
-DEFAULT_CANON    = str(Path(__file__).parents[0] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz")
-DEFAULT_MODEL    = str(Path(__file__).parents[0] / "_outputs/_spirale/step3b_train/last.pt")
-DEFAULT_OUTDIR   = str(Path(__file__).parents[0] / "_outputs/_spirale/step3c_infer")
-
+BASE_DIR        = Path(__file__).parents[0]
+DEFAULT_INPUTS  = BASE_DIR / "_inputs"
+DEFAULT_CANON   = BASE_DIR / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+DEFAULT_MODEL   = BASE_DIR / "_outputs/_spirale/step3b_train/last.pt"
+DEFAULT_OUTDIR  = BASE_DIR / "_outputs/_spirale/step3c_infer"
 
 # --- heura (domyślne parametry) ---
 HEUR_PARAMS = {
@@ -64,7 +56,7 @@ def load_canonical(npz_path: str, flip_y: bool = True) -> np.ndarray:
     y = d["y_prime"].astype(np.float32)
     if flip_y:
         y = -y
-    return np.stack([x, y], axis=1)  # (1229,2)
+    return np.stack([x, y], axis=1)
 
 def norm_mat_torch(W: torch.Tensor, H: torch.Tensor) -> torch.Tensor:
     """Macierz 3x3: piksele -> [-1,1] (ten sam scale dla x,y = 0.5*max(W,H))."""
@@ -135,19 +127,13 @@ class PointNetRegressor(nn.Module):
 # ---------------------- dopasowanie: metryki i overlay ----------------------
 
 def mutual_nn_pairs(A: np.ndarray, B: np.ndarray, tau: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Mutual-NN z bramkowaniem tau [px].
-    Zwraca (idxA, idxB, dists) dla dopasowanych par.
-    """
+    """Mutual-NN z bramkowaniem tau [px]. Zwraca (idxA, idxB, dists)."""
     if A.size == 0 or B.size == 0:
         return np.array([], int), np.array([], int), np.array([], float)
-    # dystanse
     DA = np.sqrt(((A[:, None, :] - B[None, :, :])**2).sum(axis=2))  # (Na,Nb)
-    iB = DA.argmin(axis=1)      # dla każdego A wybór B
+    iB = DA.argmin(axis=1)
     dAB = DA[np.arange(A.shape[0]), iB]
-    DB = DA.min(axis=0)         # min po A
     iA = DA.argmin(axis=0)
-    # mutual i próg
     mask = (np.arange(A.shape[0]) == iA[iB]) & (dAB <= tau)
     idxA = np.where(mask)[0]
     idxB = iB[mask]
@@ -161,22 +147,16 @@ def draw_overlay(img_path: str, P_px: np.ndarray, S_px: np.ndarray,
     if bgr is None:
         raise FileNotFoundError(img_path)
     vis = cv2.addWeighted(bgr, 0.82, np.zeros_like(bgr), 0.18, 0)
-
-    # detekcje (zielone)
-    for x, y in P_px:
+    for x, y in P_px:  # detekcje (zielone)
         cv2.circle(vis, (int(round(x)), int(round(y))), 3, (80,220,80), -1, lineType=cv2.LINE_AA)
-    # kanon po ML (pomarańcz)
-    for x, y in S_px:
+    for x, y in S_px:  # kanon po ML (pomarańcz)
         cv2.circle(vis, (int(round(x)), int(round(y))), 3, (255,160,0), -1, lineType=cv2.LINE_AA)
-
-
     if draw_lines and pairs[0].size > 0:
         ia, ib = pairs
         for a, b in zip(ia.tolist(), ib.tolist()):
             xa, ya = S_px[a]; xb, yb = P_px[b]
             cv2.line(vis, (int(round(xa)), int(round(ya))),
                           (int(round(xb)), int(round(yb))), (180,180,180), 1, cv2.LINE_AA)
-
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out_path), vis)
 
@@ -198,14 +178,15 @@ def infer_one(img_path: str,
     if P_px.size == 0:
         raise RuntimeError(f"Brak punktów z heury dla {img_path}")
 
-    # 2) wczytaj kanon (flip_y=True jak w treningu)
-    S = load_canonical(canonical_npz, flip_y=True).astype(np.float32)  # (Np,2)
+    # 2) kanon (flip_y=True jak w treningu)
+    S = load_canonical(canonical_npz, flip_y=True).astype(np.float32)
 
     # 3) przygotuj batch (1,N,2) i normalizację do [-1,1]
     H_img, W_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE).shape
     W = torch.tensor([W_img], dtype=torch.float32, device=device)
     H = torch.tensor([H_img], dtype=torch.float32, device=device)
-    # subsample/pad P do max_pts (jak w treningu)
+
+    # subsample/pad P do max_pts
     K = P_px.shape[0]
     if K >= max_pts:
         sel = np.random.choice(K, max_pts, replace=False)
@@ -228,7 +209,7 @@ def infer_one(img_path: str,
         params = model(P_norm)           # (1,8)
         H_norm = H_from_params(params)   # (1,3,3)
 
-    # 5) konwersja do przestrzeni pikseli: H_px = N_pix^{-1} @ H_norm
+    # 5) do pikseli
     N_inv = torch.linalg.inv(N_pix)
     H_px = torch.bmm(N_inv, H_norm)      # (1,3,3)
     H_px_np = H_px.squeeze(0).cpu().numpy()
@@ -236,7 +217,7 @@ def infer_one(img_path: str,
     # 6) przewidź pozycje kanonu w pikselach
     S_t = apply_H_torch(torch.from_numpy(S[None, ...]).to(device), H_px).squeeze(0).cpu().numpy()
 
-    # 7) metryki dopasowania (mutual-NN, bramka tau_px)
+    # 7) metryki (mutual-NN, bramka tau_px)
     ia, ib, d = mutual_nn_pairs(S_t, P_px, tau=tau_px)
     keep = max(4, int(0.85 * ia.size)) if ia.size > 0 else 0
     if ia.size > 0:
@@ -263,35 +244,40 @@ def infer_one(img_path: str,
         "H_norm": H_norm.squeeze(0).cpu().numpy().tolist(),
         "H_px": H_px_np.tolist(),
         "W": int(W_img), "H": int(H_img),
-        "heur_params": heur_params,
+        "heur_params": HEUR_PARAMS,
     }
+    out_json.parent.mkdir(parents=True, exist_ok=True)
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
 
     print(f"[infer] {img_stem}: RMS={rms:.3f}px  p95={p95:.3f}px  inliers={inliers_ratio:.3f}  pairs={ia.size}")
-    print(f"[infer] Zapisano: {out_img}")
     return rms, p95, inliers_ratio
-
 
 # ---------------------- CLI ----------------------
 
 def parse_args():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--img", type=str, default=DEFAULT_IMG, help="Pojedynczy obraz")
-    ap.add_argument("--img_dir", type=str, default=DEFAULT_IMG_DIR, help="Folder obrazów (jpg/png)")
-    ap.add_argument("--model", type=str, default=DEFAULT_MODEL, help="Ścieżka do .pt (best.pt)")
-    ap.add_argument("--canonical", type=str, default=DEFAULT_CANON, help="Kanon z step2a (flip_y=True jak w treningu)")
-    ap.add_argument("--outdir", type=str, default=DEFAULT_OUTDIR, help="Folder wyników")
-    ap.add_argument("--params_json", type=str, default="", help="(Opcjonalnie) plik JSON z parametrami heury")
-    ap.add_argument("--max_pts", type=int, default=1024, help="Ile punktów z chmury użyć (subsample/pad)")
-    ap.add_argument("--tau_px", type=float, default=6.0, help="Bramkowanie par (px) do statystyk i linii")
-    ap.add_argument("--cpu", action="store_true")
+    ap.add_argument("--inputs_dir", type=Path, default=DEFAULT_INPUTS,
+                    help="Folder obrazów – tylko pliki bezpośrednio w katalogu (bez rekurencji).")
+    ap.add_argument("--model", type=str, default=str(DEFAULT_MODEL), help="Ścieżka do .pt (best/last).")
+    ap.add_argument("--canonical", type=str, default=str(DEFAULT_CANON), help="Kanon z step2a (flip_y=True jak w treningu).")
+    ap.add_argument("--outdir", type=Path, default=DEFAULT_OUTDIR, help="Folder wyników.")
+    ap.add_argument("--params_json", type=str, default="", help="(Opcjonalnie) JSON z parametrami heury.")
+    ap.add_argument("--max_pts", type=int, default=1024, help="Ile punktów z chmury użyć (subsample/pad).")
+    ap.add_argument("--tau_px", type=float, default=6.0, help="Próg (px) dla par Mutual-NN.")
+    ap.add_argument("--cpu", action="store_true", help="Wymuś inferencję na CPU.")
     return ap.parse_args()
 
+# ---------------------- main (batch) ----------------------
+
+def list_input_files(inputs_dir: Path) -> List[Path]:
+    exts = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+    return sorted([p for p in inputs_dir.iterdir() if p.is_file() and p.suffix.lower() in exts])
 
 def main():
     args = parse_args()
+
     out_dir = Path(args.outdir); out_dir.mkdir(parents=True, exist_ok=True)
 
     # params heury
@@ -302,26 +288,26 @@ def main():
 
     device = "cpu" if args.cpu else "cuda"
 
-    if args.img_dir:
-        # folder
-        paths = []
-        for ext in ("*.jpg", "*.png", "*.jpeg", "*.JPG", "*.PNG"):
-            paths.extend(glob.glob(str(Path(args.img_dir) / ext)))
-        paths = sorted(paths)
-        if not paths:
-            raise FileNotFoundError(f"Brak obrazów w {args.img_dir}")
+    inputs_dir: Path = args.inputs_dir
+    if not inputs_dir.exists():
+        raise FileNotFoundError(f"Brak katalogu wejściowego: {inputs_dir}")
 
-        for pth in tqdm(paths, desc="infer folder", ncols=100):
-            try:
-                infer_one(pth, args.model, args.canonical, out_dir, heur_params,
-                          max_pts=args.max_pts, tau_px=args.tau_px, device=device)
-            except Exception as e:
-                print(f"[infer][ERR] {pth}: {e}")
-    else:
-        # pojedynczy obraz
-        infer_one(args.img, args.model, args.canonical, out_dir, heur_params,
-                  max_pts=args.max_pts, tau_px=args.tau_px, device=device)
+    paths = list_input_files(inputs_dir)
+    if not paths:
+        raise FileNotFoundError(f"Brak obrazów w {inputs_dir}")
 
+    print(f"[infer] Plików do przetworzenia: {len(paths)}  |  device={device}")
+
+    ok = 0
+    for pth in tqdm(paths, desc="infer batch", unit="img"):
+        try:
+            infer_one(str(pth), args.model, args.canonical, out_dir, heur_params,
+                      max_pts=args.max_pts, tau_px=args.tau_px, device=device)
+            ok += 1
+        except Exception as e:
+            print(f"[infer][ERR] {pth.name}: {e}")
+
+    print(f"\n[SUMMARY] OK: {ok}/{len(paths)} | OUT: {out_dir}")
 
 if __name__ == "__main__":
     main()

@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-step2b_fit_transform.py  (v4 – fixed Procrustes + canonical y-flip)
-ETAP 2: Dopasowanie transformacji (similarity) między detekcjami z heury a kanonem Sacksa.
-
-Zmiany vs v3:
-- Procrustes (Umeyama) naprawiony: C = Xc.T @ Yc / n, poprawny wybór R i skali.
-- Domyślnie flipujemy kanon po osi Y (y -> -y), żeby pracować w układzie obrazu (y w dół).
-- reflection-aware: --reflection {auto,allow,forbid}, poprawnie działa.
+step2b_fit_transform_batch.py
+Batch: przetwarza wszystkie pliki BEZPOŚREDNIO w _inputs (bez rekurencji).
+Dla każdego pliku tworzy _outputs/_spirale/step2b_fit_transform/<stem>/...
 """
 
-import os
 import json
 import math
 import argparse
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, List
 
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 from _library.random_search_sacks_points_v3 import get_points
 
@@ -40,8 +36,6 @@ HARD_PARAMS = {
     'dot_radius': 6,
 }
 
-
-
 # ----------------------------- utils -----------------------------
 
 def load_canonical(npz_path: str, flip_y: bool) -> Dict[str, np.ndarray]:
@@ -50,50 +44,34 @@ def load_canonical(npz_path: str, flip_y: bool) -> Dict[str, np.ndarray]:
     y = d["y_prime"].astype(np.float64)
     if flip_y:
         y = -y  # dopasowujemy do układu obrazu (oś y w dół)
-    return {
-        "N": int(d["N"]),
-        "x_prime": x,
-        "y_prime": y,
-    }
+    return {"N": int(d["N"]), "x_prime": x, "y_prime": y}
 
 def pack_xy(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     return np.stack([x, y], axis=1)
 
-def procrustes_similarity_umeyama(X: np.ndarray, Y: np.ndarray, allow_reflection: bool) -> Tuple[float, np.ndarray, np.ndarray]:
-    """
-    Znajdź (s, R, t), które minimalizuje || Y - (s R X + t) ||_F.
-    Implementacja wg Umeyama (1991).
-    - X, Y: (N,2)
-    - allow_reflection: jeśli False, wymuszamy det(R)=+1 (czysta rotacja).
-    """
+def procrustes_similarity_umeyama(X: np.ndarray, Y: np.ndarray, allow_reflection: bool):
     assert X.shape == Y.shape and X.shape[1] == 2
     n = X.shape[0]
     muX = X.mean(axis=0)
     muY = Y.mean(axis=0)
     Xc = X - muX
     Yc = Y - muY
-
-    # kowariancja X->Y
     C = (Xc.T @ Yc) / n  # 2x2
 
     U, S, Vt = np.linalg.svd(C)
-    # D = diag(1, sign) zapewnia odpowiedni det(R)
     D = np.eye(2)
     if np.linalg.det(U @ Vt) < 0:
         D[1, 1] = -1.0
     if not allow_reflection and D[1, 1] < 0:
-        # wymuś det=+1
         D[1, 1] = 1.0
 
     R = U @ D @ Vt
     varX = (Xc**2).sum() / n
     s = float(np.trace(np.diag(S) @ D) / varX)
     t = muY - s * (R @ muX)
-
     return s, R, t
 
 def apply_similarity(P: np.ndarray, s: float, R: np.ndarray, t: np.ndarray) -> np.ndarray:
-    # wiersze jako wektory: (P @ R^T)
     return (s * (P @ R.T)) + t
 
 def nn_unique_pairs(S_t: np.ndarray, P: np.ndarray):
@@ -223,21 +201,20 @@ def draw_overlay_fit(img_path: str, P: np.ndarray, S: np.ndarray, trans: Dict[st
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out_path), vis)
 
-
 # --- domyślne ścieżki ---
-DEFAULT_IMG = Path(__file__).parents[0] / "_inputs/PXL_20250925_061456317_cut_shifted.jpg"
-DEFAULT_CAN = Path(__file__).parents[0] / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
-OUT_DIR = Path(__file__).parents[0] / "_outputs/_spirale/step2b_fit_transform"
-
-
+BASE_DIR = Path(__file__).parents[0]
+DEFAULT_INPUTS_DIR = BASE_DIR / "_inputs"
+DEFAULT_CAN = BASE_DIR / "_outputs/_spirale/step2a_create_canonical/canonical_sacks_N10000.npz"
+DEFAULT_OUT_DIR = BASE_DIR / "_outputs/_spirale/step2b_fit_transform"
 
 # ----------------------------- CLI -----------------------------
 
 def parse_args():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--img", type=str, default=DEFAULT_IMG)
-    ap.add_argument("--canonical", type=str, default=DEFAULT_CAN)
-    ap.add_argument("--out_dir", type=str, default=OUT_DIR)
+    ap.add_argument("--inputs_dir", type=Path, default=DEFAULT_INPUTS_DIR,
+                    help="Katalog z obrazami do przetworzenia (bez rekurencji).")
+    ap.add_argument("--canonical", type=str, default=str(DEFAULT_CAN))
+    ap.add_argument("--out_dir", type=Path, default=DEFAULT_OUT_DIR)
     ap.add_argument("--flip_canonical_y", type=str, default="true", choices=["true","false"],
                     help="Jeśli true (domyślnie), zamienia y->-y w kanonie, by dopasować układ obrazu (y w dół).")
     ap.add_argument("--keep_ratio", type=float, default=0.85)
@@ -247,36 +224,30 @@ def parse_args():
                     help="auto testuje oba warianty i wybiera lepszy")
     return ap.parse_args()
 
-def main():
-    args = parse_args()
-    flip_y = (args.flip_canonical_y.lower() == "true")
+# ----------------------------- main -----------------------------
 
-    img_path = Path(args.img)
-    if not img_path.exists():
-        raise FileNotFoundError(img_path)
+def list_input_files(inputs_dir: Path) -> List[Path]:
+    exts = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+    return sorted([p for p in inputs_dir.iterdir() if p.is_file() and p.suffix.lower() in exts])
 
-    can = load_canonical(args.canonical, flip_y=flip_y)
-    S = pack_xy(can["x_prime"], can["y_prime"])
-
-    print(f"[fit] Obraz: {img_path.name}")
-    print(f"[fit] Kanon: N={10000}, primes={len(S)}  (flip_y={flip_y})")
-    print(f"[fit] Heura (hardcoded): {HARD_PARAMS}")
-
+def process_single_image(img_path: Path, S: np.ndarray, flip_y: bool,
+                         out_root: Path, keep_ratio: float, max_iters: int,
+                         tol_rms: float, reflection_mode: str) -> bool:
     # ETAP 1: detekcje
     pts = get_points(str(img_path), HARD_PARAMS)
     P = np.array(pts, dtype=np.float64)
-    print(f"[fit] Detekcje (heura): {len(P)}")
+    print(f"\n[fit] {img_path.name} | detekcje={len(P)} | flip_y={flip_y} | heura={HARD_PARAMS['method']}")
 
-    out_dir = OUT_DIR / img_path.stem
+    out_dir = out_root / img_path.stem
     out_dir.mkdir(parents=True, exist_ok=True)
     det_csv = out_dir / "detections.csv"
     save_detections_csv(det_csv, P)
 
     # ETAP 2: dopasowanie – tryby reflection
     modes = []
-    if args.reflection == "auto":
+    if reflection_mode == "auto":
         modes = [False, True]
-    elif args.reflection == "allow":
+    elif reflection_mode == "allow":
         modes = [True]
     else:
         modes = [False]
@@ -286,9 +257,9 @@ def main():
     for allow_reflection in modes:
         res = trimmed_icp_similarity(
             S=S, P=P,
-            keep_ratio=float(args.keep_ratio),
-            max_iters=int(args.max_iters),
-            tol_rms=float(args.tol_rms),
+            keep_ratio=float(keep_ratio),
+            max_iters=int(max_iters),
+            tol_rms=float(tol_rms),
             allow_reflection=allow_reflection
         )
         if not res.get("ok", False):
@@ -302,8 +273,8 @@ def main():
             best_mode = "allow" if allow_reflection else "forbid"
 
     if best is None:
-        print("[fit][ERROR] Żadne dopasowanie nie wyszło.")
-        return
+        print(f"[fit][ERROR] {img_path.name}: brak poprawnego dopasowania.")
+        return False
 
     trn_json = out_dir / "transform.json"
     overlay  = out_dir / "overlay_fit.png"
@@ -312,11 +283,43 @@ def main():
 
     if best_mode == "allow":
         print("[fit] Wybrano wariant z ODBICIEM (det(R)<0).")
-    print(f"[fit] Zapisano do: {out_dir}")
+    print(f"[fit] Zapisano: {out_dir}")
+    return True
+
+def main():
+    args = parse_args()
+    flip_y = (args.flip_canonical_y.lower() == "true")
+
+    inputs_dir: Path = args.inputs_dir
+    out_root: Path = args.out_dir
+
+    if not inputs_dir.exists():
+        raise FileNotFoundError(f"Brak katalogu wejściowego: {inputs_dir}")
+    out_root.mkdir(parents=True, exist_ok=True)
+
+    files = list_input_files(inputs_dir)
+    if not files:
+        print(f"Brak plików do przetworzenia w: {inputs_dir}")
+        return
+
+    can = load_canonical(args.canonical, flip_y=flip_y)
+    S = pack_xy(can["x_prime"], can["y_prime"])
+    print(f"[fit] Kanon: N={can['N']} | points={len(S)} | flip_y={flip_y}")
+    print(f"[fit] Plików do przetworzenia: {len(files)}")
+
+    ok_cnt = 0
+    for img in tqdm(files, desc="Przetwarzanie obrazów", unit="img"):
+        try:
+            if process_single_image(
+                img_path=img, S=S, flip_y=flip_y, out_root=out_root,
+                keep_ratio=args.keep_ratio, max_iters=args.max_iters,
+                tol_rms=args.tol_rms, reflection_mode=args.reflection
+            ):
+                ok_cnt += 1
+        except Exception as e:
+            print(f"[ERROR] {img.name}: {e}")
+
+    print(f"\n[SUMMARY] OK: {ok_cnt}/{len(files)} | OUT: {out_root}")
 
 if __name__ == "__main__":
     main()
-
-"""
-.../pwpw$ python -m _spirale_src.step2b_fit_transform
-"""

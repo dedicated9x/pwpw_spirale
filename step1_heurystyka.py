@@ -3,11 +3,12 @@
 
 from _library.random_search_sacks_points_v3 import detect_points
 from pathlib import Path
-import argparse
+from tqdm import tqdm
 
-# Domyślne ścieżki (używane jako default w argparse)
-DEFAULT_INPUT_IMG = Path(__file__).parents[0] / "_inputs/PXL_20250925_061456317.jpg"
-DEFAULT_OUTPUT_IMG = Path(__file__).parents[0] / "_outputs/_spirale/step1_heurystyka/PXL_20250925_061456317.jpg"
+# Ścieżki bazowe
+BASE_DIR = Path(__file__).parents[0]
+INPUT_DIR = BASE_DIR / "_inputs"
+OUTPUT_DIR = BASE_DIR / "_outputs/_spirale/step1_heurystyka"
 
 params = {
     'clahe_clip': 3.71,
@@ -26,41 +27,24 @@ params = {
     'dot_radius': 6,
 }
 
-def parse_args():
-    p = argparse.ArgumentParser(
-        description="Wykrywa punkty i zapisuje obraz z kropkami."
-    )
-    p.add_argument(
-        "-i", "--input",
-        type=Path,
-        default=DEFAULT_INPUT_IMG,
-        help=f"Ścieżka do obrazu wejściowego (domyślnie: {DEFAULT_INPUT_IMG})"
-    )
-    p.add_argument(
-        "-o", "--output",
-        type=Path,
-        default=DEFAULT_OUTPUT_IMG,
-        help=f"Ścieżka do obrazu wyjściowego (domyślnie: {DEFAULT_OUTPUT_IMG})"
-    )
-    return p.parse_args()
-
 def main():
-    args = parse_args()
+    if not INPUT_DIR.exists():
+        raise FileNotFoundError(f"Brak katalogu wejściowego: {INPUT_DIR}")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    input_img: Path = args.input
-    output_img: Path = args.output
+    # Lista plików tylko bezpośrednio w katalogu
+    files = [f for f in INPUT_DIR.iterdir() if f.is_file()]
 
-    if not input_img.exists():
-        raise FileNotFoundError(f"Brak obrazu wejściowego: {input_img}")
+    if not files:
+        print("Brak plików w katalogu _inputs")
+        return
 
-    # Upewnij się, że katalog wyjścia istnieje
-    output_img.parent.mkdir(parents=True, exist_ok=True)
-
-    _ = detect_points(str(input_img), str(output_img), params)
+    for f in tqdm(files, desc="Przetwarzanie obrazów"):
+        out_path = OUTPUT_DIR / f.name
+        try:
+            detect_points(str(f), str(out_path), params)
+        except Exception as e:
+            print(f"[BŁĄD] {f.name}: {e}")
 
 if __name__ == "__main__":
     main()
-
-"""
-.../pwpw$ python -m _spirale_src.step1_heurystyka
-"""

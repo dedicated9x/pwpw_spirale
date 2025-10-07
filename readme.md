@@ -16,8 +16,8 @@ Aby użyć heurystyki z pkt. 1) odpalamy skrypt
 python step1_heurystyka.py
 ```
 
-Domyślnie jako obraz wejściowy brany jest obrazek _inputs/PXL_20250925_061456317.jpg, zaś 
-ostateczna wizualizacja zapisywana jest w _outputs/_spirale/step1_heurystyka/PXL_20250925_061456317.jpg. 
+Domyślnie jako obrazy wejściowe brane jest obrazki z folderu _inputs zaś 
+wizualizacje zapisywane sa w _outputs/_spirale/step1_heurystyka. 
 Można to zmienić za pomocą parametrów skryptu.
 
 ### Model ML-owy do matchowania spirali
@@ -45,8 +45,8 @@ W końcu możemy przeprowadzić inferencję za pomocą skryptu
 ```bash
 python step3c_infer.py
 ```
-Domyślnie jako obraz wejściowy brany jest obrazek _inputs/PXL_20250925_061456317_cut_shifted.jpg, zaś 
-ostateczna wizualizacja zapisywana jest w _outputs/_spirale/step3c_infer. 
+Domyślnie jako obrazy wejściowe brane są obrazy z katalogu _inputs/, zaś 
+wizualizacje zapisywana są w _outputs/_spirale/step3c_infer. 
 Można to zmienić za pomocą parametrów skryptu.
 
 ### Heurystyka do matchowania spirali 
@@ -55,11 +55,17 @@ nie-MLowa heurystyka szukająca transformacji spirali. Aby to zrobić należy ur
 ```bash
 python step2b_fit_transform.py
 ```
-Domyślnie jako obraz wejściowy brany jest obrazek _inputs/PXL_20250925_061456317_cut_shifted.jpg, zaś 
-ostateczna wizualizacja zapisywana jest w _outputs/_spirale/step2b_fit_transform. 
+Domyślnie jako obrazy wejściowe brane są obrazki z katalogu _inputs/, zaś 
+wizualizacje zapisywane są w _outputs/_spirale/step2b_fit_transform. 
 Można to zmienić za pomocą parametrów skryptu.
 
 Co do samej wizualizacji, to zielona spirala to spirala wejściowa, natomiast niebieska
 spirala powstała z oszacowania parametrów transformacji przez heurystykę.
+
+Warto nadmienić, że heurystyka jest bardzo wrażliwa na obecność false positivów. Powstają one zwykle 
+na brzegu spirali (na tym kwadracie, który otacza spiralę). W praktyce, działanie heurystyki powinien 
+poprzedzać etap, którym usuwamy z obrazka jego brzegi, tak aby została sama spirala. 
+Zrobiłem to ręcznie w przypadku obrazka _inputs/PXL_20250925_061456317_cut_shifted.jpg.
+W tym przypadku heurystyka działa całkiem obiecująco.
 
 **Ważne:** skrypt step2b_fit_transform.py potrzebuje do swojego działania outputu skryptu step2a_create_canonical.py 
